@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Làng Quê Việt Nam 3D Online</title>
+<style>
+*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#87ceeb;font-family:Arial,sans-serif;touch-action:none}canvas{display:block;touch-action:none}
+button,input{font: bold 15px Arial;border:0;border-radius:13px;background:#ffffffdf;color:#172d25;padding:10px;user-select:none;-webkit-user-select:none;touch-action:none}button:active{transform:scale(.93)}
+#lobby{position:fixed;inset:0;z-index:20;display:flex;align-items:center;justify-content:center;background:#102b25df;padding:16px;color:white}
+.panel{width:min(440px,100%);background:#f5f0df;color:#20352b;border-radius:20px;padding:20px;box-shadow:0 10px 40px #0008}.panel h1{font-size:24px;margin:0 0 8px}.panel p{font-size:13px;line-height:1.5}.panel button{display:block;width:100%;margin-top:9px;background:#28794b;color:white;padding:13px}.panel input{width:100%;border:1px solid #9aab9d;margin-top:6px;text-transform:uppercase}#roomCode{font-size:18px;font-weight:bold;letter-spacing:1px;background:white;padding:11px;border-radius:10px;text-align:center;overflow-wrap:anywhere;color:#1d4931}#netStatus{font-size:13px;color:#236b43;min-height:18px;margin-top:10px}
+#info{position:fixed;top:62px;left:9px;z-index:5;color:white;background:#17251ddd;padding:9px 11px;border-radius:12px;font-size:12px;line-height:1.5;pointer-events:none}
+#controls{position:fixed;bottom:15px;left:12px;z-index:6;display:grid;grid-template-columns:53px 53px 53px;gap:5px}#controls button{width:53px;height:53px;padding:0;font-size:20px}#up{grid-column:2}#left{grid-column:1}#down{grid-column:2}#right{grid-column:3}
+.action{position:fixed;z-index:6;width:62px;height:62px;border-radius:50%;padding:0;font-size:21px}#jump{right:17px;bottom:24px}#punch{right:18px;bottom:100px;background:#ffbd45}#broom{right:18px;bottom:176px;background:#d9b477;width:64px;height:55px;border-radius:14px;font-size:14px}
+#sit{position:fixed;right:94px;bottom:24px;z-index:6;width:68px;height:47px;font-size:13px;background:#bce6ff}#lie{position:fixed;right:168px;bottom:24px;z-index:6;width:68px;height:47px;font-size:13px;background:#c8e9c1}
+#callDog{position:fixed;right:94px;bottom:83px;z-index:6;width:142px;height:43px;font-size:13px;background:#ffdf8b}#dogAttack{position:fixed;right:94px;bottom:132px;z-index:6;width:142px;height:43px;font-size:12px;background:#ffb5a8}
+#resetCamera{position:fixed;right:12px;top:12px;z-index:6;width:44px;height:44px;padding:0;font-size:22px}
+#gameMenu{position:fixed;top:12px;left:12px;z-index:12;width:min(235px,62vw);pointer-events:auto}
+#menuToggle{width:100%;background:#173e2c;color:#fff;text-align:left;box-shadow:0 3px 12px #0005}
+#menuItems{display:none;max-height:65vh;overflow:auto;margin-top:6px;padding:9px;background:#173e2cee;border:1px solid #ffffff55;border-radius:14px;gap:6px}
+#menuItems.open{display:grid}
+#menuItems button{width:100%;font-size:12px;padding:10px;text-align:left;background:#fff;color:#183b2a}
+#menuItems button.danger{background:#ffd2c8}
+#toast{position:fixed;left:50%;top:16%;transform:translateX(-50%);z-index:15;max-width:85vw;padding:10px 15px;border-radius:12px;background:#142d22eF;color:white;font-weight:bold;text-align:center;display:none;pointer-events:none}
+@media(orientation:landscape){#controls{bottom:8px;left:8px}#jump{bottom:10px}#punch{bottom:80px}#broom{bottom:145px}#sit,#lie{bottom:10px}#callDog{bottom:65px}#dogAttack{bottom:112px}}
+</style>
+</head>
+<body>
+<div id="lobby"><div class="panel">
+<h1>🌾 LÀNG QUÊ VIỆT NAM 3D</h1><b>CHẾ ĐỘ ONLINE – 2 NGƯỜI</b>
+<p>Người thứ nhất tạo phòng và gửi mã. Người thứ hai nhập mã để vào cùng thế giới.</p>
+<button id="createRoom">🌐 TẠO PHÒNG</button>
+<div style="font-size:12px;margin:13px 0 5px">MÃ PHÒNG</div><div id="roomCode">Chưa tạo phòng</div>
+<button id="copyCode" style="background:#456b91">📋 SAO CHÉP MÃ PHÒNG</button>
+<div style="font-size:12px;margin:13px 0 5px">MÃ PHÒNG BẠN BÈ</div><input id="joinCode" placeholder="Nhập mã phòng">
+<button id="joinRoom">🚪 THAM GIA PHÒNG</button>
+<div id="netStatus">Chưa kết nối. Có thể chơi thử ngoại tuyến bằng cách đóng bảng này.</div>
+<p style="font-size:11px;color:#66766b">Cần Internet và HTTPS. Kết nối ngang hàng có thể cần TURN relay nếu mạng di động/Wi-Fi chặn kết nối trực tiếp.</p>
+<button id="playOffline" style="background:#69776f">CHƠI NGOẠI TUYẾN</button>
+</div></div>
+<div id="info">LÀNG QUÊ VIỆT NAM<br>Đang tải...</div>
+<div id="gameMenu">
+ <button id="menuToggle">☰ MENU ▾</button>
+ <div id="menuItems">
+  <button id="eatMatcha">🍵 Uống matcha (+25 máu)</button>
+  <button id="eatMilkTea">🧋 Uống trà sữa (+35 máu)</button>
+  <button id="enterHouse">🏡 Vào / ra khỏi nhà</button>
+  <button id="useCar">🚗 Lên / xuống xe (chở cả hai)</button>
+  <button id="goShop">💕 Rủ nhau đến NGÔ GIA</button>
+  <button id="kiss">💋 Hôn nhau</button>
+  <button id="fight">👊 Đánh nhau</button>
+  <button id="kick">🦵 Đá nhau</button>
+ </div>
+</div>
+<div id="toast"></div>
+<div id="controls"><button id="up">▲</button><button id="left">◀</button><button id="down">▼</button><button id="right">▶</button></div>
+<button class="action" id="jump">⤒</button><button class="action" id="punch">👊</button><button class="action" id="broom">🧹</button>
+<button id="sit">🪑 NGỒI</button><button id="lie">🛌 NẰM</button><button id="callDog">🐕 GỌI NU</button><button id="dogAttack">🐕 NU ĐUỔI NPC</button><button id="resetCamera">⟳</button><button id="rotateScreen" style="position:fixed;top:62px;right:12px;z-index:6;width:44px;height:44px;padding:0;background:#d9f0ff">↻</button>
+
+<script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js"></script>
+<script type="module">
+const info=document.getElementById('info'),statusEl=document.getElementById('netStatus'),lobby=document.getElementById('lobby');
+let THREE;
+try{THREE=await import('https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js')}catch(e){info.textContent='Không tải được thư viện 3D. Hãy kiểm tra Internet.';throw e}
+const scene=new THREE.Scene();scene.background=new THREE.Color(0x87ceeb);scene.fog=new THREE.Fog(0x87ceeb,65,190);
+const camera=new THREE.PerspectiveCamera(70,innerWidth/innerHeight,.1,350);
+const renderer=new THREE.WebGLRenderer({antialias:false,powerPreference:'high-performance'});renderer.setSize(innerWidth,innerHeight);renderer.setPixelRatio(Math.min(devicePixelRatio,1.4));renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;document.body.appendChild(renderer.domElement);
+scene.add(new THREE.HemisphereLight(0xffffff,0x71845b,1.9));const sun=new THREE.DirectionalLight(0xfff0d0,2.1);sun.position.set(30,60,20);sun.castShadow=true;sun.shadow.mapSize.set(1024,1024);scene.add(sun);
+function mat(c){return new THREE.MeshStandardMaterial({color:c,roughness:.9})}
+const grass=mat(0x629b43),roadMat=mat(0xb99a6b),dirt=mat(0x98754b),wood=mat(0x80502d),roof=mat(0x9d3525),wall=mat(0xe5d2a6),leaf=mat(0x27713b),darkLeaf=mat(0x18532c),water=mat(0x328ca5),rice=mat(0x91a93a);
+function box(w,h,d,material,x,y,z,parent=scene){const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),material);m.position.set(x,y,z);m.castShadow=true;m.receiveShadow=true;parent.add(m);return m}
+function cylinder(rt,rb,h,material,x,y,z,n=8,parent=scene){const m=new THREE.Mesh(new THREE.CylinderGeometry(rt,rb,h,n),material);m.position.set(x,y,z);m.castShadow=true;parent.add(m);return m}
+// CẢNH QUAN LÀNG QUÊ GỐC
+const ground=new THREE.Mesh(new THREE.PlaneGeometry(300,300),grass);ground.rotation.x=-Math.PI/2;ground.receiveShadow=true;scene.add(ground);
+box(8,.12,170,roadMat,0,.06,0);box(75,.13,5,roadMat,18,.07,-10);box(5,.13,50,roadMat,-20,.07,25);box(.35,.15,170,dirt,-4.1,.1,0);box(.35,.15,170,dirt,4.1,.1,0);
+function house(x,z,s=1){const w=5*s,h=3.2*s,d=4.5*s;box(w+.5,.25,d+.5,wood,x,.2,z);box(w,h,d,wall,x,.25+h/2,z);const a=Math.atan2(1.5,2.7);let l=box(3.2*s,.18,d+1,roof,x-1.35*s,.25+h+.65*s,z);l.rotation.z=-a;l=box(3.2*s,.18,d+1,roof,x+1.35*s,.25+h+.65*s,z);l.rotation.z=a;box(1.2*s,2.2*s,.15,wood,x,.25+1.1*s,z+d/2+.09);box(.85*s,.9*s,.15,mat(0x70a9b5),x-1.55*s,1.8*s,z+d/2+.1);box(.85*s,.9*s,.15,mat(0x70a9b5),x+1.55*s,1.8*s,z+d/2+.1)}
+house(-12,-12,1.1);house(13,-20,1);house(-13,8,1);house(13,12,1.15);house(-12,30,.9);house(14,34,1);
+function coconut(x,z){cylinder(.23,.38,5,wood,x,2.5,z,7);const top=new THREE.Group();top.position.set(x,5,z);scene.add(top);for(let i=0;i<8;i++){const l=new THREE.Mesh(new THREE.ConeGeometry(.38,3.8,5),leaf);l.rotation.z=Math.PI/2;l.rotation.y=i*Math.PI/4;l.position.set(Math.sin(i*Math.PI/4)*1.5,-.35,Math.cos(i*Math.PI/4)*1.5);top.add(l)}}
+coconut(-28,-15);coconut(29,-28);coconut(-30,35);coconut(32,40);
+function bamboo(x,z){for(let i=0;i<5;i++){const xx=x+(Math.random()-.5)*2,zz=z+(Math.random()-.5)*2;cylinder(.07,.09,5,wood,xx,2.5,zz,6);for(let j=0;j<3;j++){const b=new THREE.Mesh(new THREE.ConeGeometry(.7,2,6),darkLeaf);b.position.set(xx+(Math.random()-.5)*.8,3.8+j*.35,zz);b.rotation.z=(Math.random()-.5)*1.2;scene.add(b)}}}
+bamboo(-35,-10);bamboo(-36,10);bamboo(35,5);
+function riceField(x,z){box(28,.15,35,dirt,x,.05,z);box(26,.1,33,water,x,.14,z);for(let i=0;i<13;i++)for(let j=0;j<16;j++)cylinder(.025,.035,.65,rice,x-12+i*2,.5,z-15+j*2,5);box(29,.3,.6,grass,x,.28,z-17.5);box(29,.3,.6,grass,x,.28,z+17.5);box(.6,.3,35,grass,x-14,.28,z);box(.6,.3,35,grass,x+14,.28,z)}
+riceField(52,-25);riceField(55,35);
+const pond=new THREE.Mesh(new THREE.CircleGeometry(12,32),water);pond.rotation.x=-Math.PI/2;pond.position.set(-55,.16,-20);scene.add(pond);
+for(let i=0;i<24;i++){const x=-55+(Math.random()-.5)*19,z=-20+(Math.random()-.5)*19,l=new THREE.Mesh(new THREE.CircleGeometry(.65,8),leaf);l.rotation.x=-Math.PI/2;l.position.set(x,.23,z);scene.add(l);if(i%3===0){const f=new THREE.Mesh(new THREE.SphereGeometry(.25,8,8),mat(0xf2a5c4));f.position.set(x,.48,z);scene.add(f)}}
+function mountain(x,z,r,h){const m=new THREE.Mesh(new THREE.ConeGeometry(r,h,7),mat(0x537a55));m.position.set(x,h/2,z);scene.add(m)}
+mountain(-80,-85,30,45);mountain(-25,-105,38,55);mountain(40,-110,35,48);mountain(100,-80,40,60);
+function tree(x,z){cylinder(.18,.25,2,wood,x,1,z);const crown=new THREE.Mesh(new THREE.SphereGeometry(1.5,7,6),leaf);crown.position.set(x,3,z);scene.add(crown)}
+for(let i=0;i<90;i++){const x=(Math.random()-.5)*150,z=(Math.random()-.5)*150;if(Math.abs(x)<22&&Math.abs(z)<40)continue;if(x>35&&z<0)continue;if(x<-42&&z<-5&&z>-40)continue;tree(x,z)}
+// NHÂN VẬT – hai bản sao cùng cấu trúc
+const skin=mat(0xffc18e),clothesBlue=mat(0x245bd6),clothesGreen=mat(0x111318),pants=mat(0x252b3a),shoes=mat(0x252525);
+const hairMat=mat(0x21150f),dressMat=mat(0x2869df),suitMat=mat(0x10131a),shirtWhite=mat(0xf4f1e9);
+function part(w,h,d,material,x,y,z,parent){const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),material);m.position.set(x,y,z);m.castShadow=true;parent.add(m);return m}
+function createPlayer(shirt,name,gender='male'){
+ const g=new THREE.Group();scene.add(g);
+ const torso=part(.8,1,.45,shirt,0,1.35,0,g);
+ const head=new THREE.Mesh(new THREE.SphereGeometry(.34,12,10),skin);head.position.y=2.1;g.add(head);
+ const arms=[],legs=[];
+ for(const x of [-.48,.48]){const a=new THREE.Group();a.position.set(x,1.75,0);g.add(a);part(.22,.75,.23,shirt,0,-.35,0,a);part(.2,.2,.2,skin,0,-.77,0,a);arms.push(a)}
+ for(const x of [-.22,.22]){const l=new THREE.Group();l.position.set(x,.85,0);g.add(l);part(.3,.8,.3,gender==='female'?dressMat:pants,0,-.4,0,l);part(.32,.18,.45,shoes,0,-.85,.06,l);legs.push(l)}
+ if(gender==='female'){
+   // Váy xanh dương xòe nhẹ và tóc dài phía sau đầu.
+   const skirt=new THREE.Mesh(new THREE.CylinderGeometry(.34,.62,.85,12),dressMat);skirt.position.set(0,.78,0);g.add(skirt);
+   const hair=new THREE.Mesh(new THREE.SphereGeometry(.37,12,10),hairMat);hair.scale.set(1.04,1.08,1);hair.position.set(0,2.22,.04);g.add(hair);
+   part(.48,.95,.22,hairMat,0,1.75,.27,g);
+   for(const x of [-.25,.25])part(.13,.75,.16,hairMat,x,1.55,.3,g);
+ }else{
+   // Áo sơ mi trắng, cà vạt và ve áo tối màu tạo dáng vest đen.
+   part(.12,.58,.035,mat(0x8d1f2b),0,1.42,-.235,g);
+   part(.18,.2,.05,shirtWhite,-.12,1.82,-.245,g);
+   part(.18,.2,.05,shirtWhite,.12,1.82,-.245,g);
+ }
+ return {g,torso,head,arms,legs,pose:'stand',broom:false,action:'',actionTime:0,walk:0,name,gender,health:100};
+}
+const player=createPlayer(dressMat,'Tuyết','female'),remote=createPlayer(suitMat,'Quốc','male');
+player.g.position.set(0,0,4);remote.g.position.set(2,0,4);remote.g.visible=false;
+// Chổi gắn tay nhân vật
+function addBroom(p){const g=new THREE.Group();const stick=new THREE.Mesh(new THREE.CylinderGeometry(.045,.055,1.25,8),mat(0x98602d));stick.position.y=-.35;g.add(stick);const brush=new THREE.Mesh(new THREE.BoxGeometry(.55,.25,.28),mat(0xc99b52));brush.position.set(0,-.95,0);g.add(brush);g.position.set(0,-.95,-.12);p.arms[1].add(g);return g}
+const broom=addBroom(player),remoteBroom=addBroom(remote);broom.visible=remoteBroom.visible=false;
+
+// Tính năng Tuyết & Quốc: nhà riêng, xe hơi và tiệm trà sữa NGÔ GIA.
+const toastEl=document.getElementById('toast');
+let toastTimer=0,playerHealth=100,remoteHealth=100,inHouse=false,inCar=false,atShop=false;
+let houseReturn=new THREE.Vector3(0,0,4);
+function notify(msg){toastEl.textContent=msg;toastEl.style.display='block';clearTimeout(toastTimer);toastTimer=setTimeout(()=>toastEl.style.display='none',2300)}
+function label3D(text,x,y,z,color=0xffffff){
+ const c=document.createElement('canvas');c.width=512;c.height=128;const ctx=c.getContext('2d');
+ ctx.fillStyle='#183a29';ctx.fillRect(0,0,512,128);ctx.strokeStyle='#f5e6bd';ctx.lineWidth=8;ctx.strokeRect(5,5,502,118);
+ ctx.font='bold 54px Arial';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillStyle='#fff';ctx.fillText(text,256,65);
+ const tex=new THREE.CanvasTexture(c),mesh=new THREE.Mesh(new THREE.PlaneGeometry(6,1.5),new THREE.MeshBasicMaterial({map:tex,transparent:true,side:THREE.DoubleSide}));
+ mesh.position.set(x,y,z);scene.add(mesh);return mesh;
+}
+const ngoaia= new THREE.Group();scene.add(ngoaia);ngoaia.position.set(22,0,-8);
+box(9,3.5,7,wall,22,1.75,-8);box(9.6,.35,7.6,roof,22,3.65,-8);
+box(2.2,2.3,.18,wood,22,1.15,-4.42);box(1.6,1.2,.12,mat(0x9bd9ed),19.3,2,-4.4);box(1.6,1.2,.12,mat(0x9bd9ed),24.7,2,-4.4);
+label3D('NGÔ GIA',22,4.8,-4.1,0xffffff);
+const car=new THREE.Group();scene.add(car);car.position.set(5,0,7);
+const carBody=box(3.5,.85,5,mat(0xc62828),0,.85,0,car);box(2.5,1.05,2.5,mat(0x9ed7e8),0,1.65,-.25,car);
+for(const x of [-1.65,1.65])for(const z of [-1.55,1.55]){const w=new THREE.Mesh(new THREE.CylinderGeometry(.48,.48,.28,12),mat(0x171717));w.rotation.z=Math.PI/2;w.position.set(x,.48,z);car.add(w)}
+const homeInterior=new THREE.Group();scene.add(homeInterior);homeInterior.position.set(100,0,100);
+box(12,.25,10,wood,0,.12,0,homeInterior);box(12,.25,.25,wall,0,2,-5,homeInterior);box(.25,4,10,wall,-6,2,0,homeInterior);box(.25,4,10,wall,6,2,0,homeInterior);
+box(3,.7,1.5,mat(0x8b5a36),-2,.6,-2,homeInterior);box(2,.8,1.1,mat(0x4c86a8),3,.6,2,homeInterior);
+label3D('NHÀ CỦA TUYẾT & QUỐC',100,4,95.5);
+function near(a,b,r=5){return Math.hypot(a.x-b.x,a.z-b.z)<r}
+function setHealth(v){playerHealth=Math.max(0,Math.min(100,v));info.innerHTML='LÀNG QUÊ VIỆT NAM<br>💗 Máu Tuyết: '+playerHealth+'/100<br>Quốc: '+remoteHealth+'/100'}
+document.getElementById('menuToggle').onclick=()=>{const m=document.getElementById('menuItems');m.classList.toggle('open');document.getElementById('menuToggle').textContent=m.classList.contains('open')?'☰ MENU ▴':'☰ MENU ▾'};
+document.getElementById('eatMatcha').onclick=()=>{setHealth(playerHealth+25);notify('🍵 Tuyết uống matcha, hồi 25 máu!')};
+document.getElementById('eatMilkTea').onclick=()=>{setHealth(playerHealth+35);notify('🧋 Tuyết uống trà sữa, hồi 35 máu!')};
+document.getElementById('enterHouse').onclick=()=>{
+ if(!inHouse){houseReturn.copy(player.g.position);player.g.position.set(100,0,100);remote.g.position.set(102,0,100);inHouse=true;notify('🏡 Tuyết và Quốc đã vào nhà')}
+ else{player.g.position.copy(houseReturn);remote.g.position.set(houseReturn.x+2,0,houseReturn.z);inHouse=false;notify('🚪 Hai bạn đã ra khỏi nhà')}
+};
+document.getElementById('useCar').onclick=()=>{
+ if(!inCar){if(!near(player.g.position,car.position,7)){notify('Hãy đến gần chiếc xe trước nhé!');return}inCar=true;player.g.position.set(car.position.x,0,car.position.z);remote.g.position.set(car.position.x,0,car.position.z);player.g.visible=false;remote.g.visible=false;notify('🚗 Cả hai đã lên xe. Dùng nút di chuyển để lái xe')}
+ else{inCar=false;player.g.visible=true;remote.g.visible=true;player.g.position.set(car.position.x,0,car.position.z+3);remote.g.position.set(car.position.x+1.2,0,car.position.z+3);notify('Hai bạn đã xuống xe')}
+};
+document.getElementById('goShop').onclick=()=>{
+ player.g.position.set(22,0,-3);remote.g.position.set(24,0,-3);player.g.rotation.y=0;remote.g.rotation.y=0;atShop=true;notify('🧋 Tuyết rủ Quốc đến tiệm trà sữa NGÔ GIA!');speakVietnamese('Mình cùng đi uống trà sữa Ngô Gia nhé!');
+};
+document.getElementById('kiss').onclick=()=>{
+ if(Math.hypot(player.g.position.x-remote.g.position.x,player.g.position.z-remote.g.position.z)>5){notify('Hãy đưa Tuyết và Quốc lại gần nhau để hôn nhé!');return}
+ player.action='kiss';remote.action='kiss';player.actionTime=1;remote.actionTime=1;
+ speakVietnamese('Anh yêu em');notify('💋 Quốc hôn Tuyết: “Anh yêu em”. Tuyết hôn Quốc: “Em yêu anh”.');
+ setTimeout(()=>speakVietnamese('Em yêu anh'),1300);
+};
+function coupleFight(kind){
+ if(Math.hypot(player.g.position.x-remote.g.position.x,player.g.position.z-remote.g.position.z)>5){notify('Hãy đưa hai nhân vật lại gần nhau trước nhé!');return}
+ const kick=kind==='kick';remoteHealth=Math.max(0,remoteHealth-(kick?18:12));playerHealth=Math.max(0,playerHealth-(kick?8:5));
+ remote.action=kind;remote.actionTime=.5;player.action=kind;player.actionTime=.5;playSound('punch');
+ speakVietnamese(kick?'Hai người đang đá nhau!':'Hai người đang đánh nhau!');
+ notify((kick?'🦵':'👊')+' Tuyết và Quốc đang '+(kick?'đá nhau':'đánh nhau')+'! Máu Quốc: '+remoteHealth);
+ setHealth(playerHealth);
+}
+document.getElementById('fight').onclick=()=>coupleFight('fight');
+document.getElementById('kick').onclick=()=>coupleFight('kick');
+//
+const npcList=[],npcSkin=mat(0xffbd91),npcClothes=mat(0xe64b35),npcPants=mat(0x263b70);
+function createNPC(x,z){const npc=new THREE.Group();scene.add(npc);part(.8,1,.45,npcClothes,0,1.35,0,npc);const h=new THREE.Mesh(new THREE.SphereGeometry(.34,12,10),npcSkin);h.position.y=2.1;npc.add(h);part(.22,.75,.23,npcClothes,-.48,1.4,0,npc);part(.22,.75,.23,npcClothes,.48,1.4,0,npc);part(.3,.8,.3,npcPants,-.22,.45,0,npc);part(.3,.8,.3,npcPants,.22,.45,0,npc);npc.position.set(x,0,z);npcList.push({group:npc,x,z,state:'alive',velocity:new THREE.Vector3(),flightTimer:0,respawnTimer:0})}
+createNPC(8,-5);createNPC(-8,18);createNPC(20,25);createNPC(-25,25);createNPC(30,-5);createNPC(0,28);
+// Chó Nu
+const dog=new THREE.Group();scene.add(dog);const dogBrown=mat(0xb9783e),dogLight=mat(0xe5b77c),dogDark=mat(0x49301f),dogBlack=mat(0x171717);
+function dogBall(parent,x,y,z,sx,sy,sz,material){const m=new THREE.Mesh(new THREE.SphereGeometry(1,10,8),material);m.position.set(x,y,z);m.scale.set(sx,sy,sz);parent.add(m);return m}
+dogBall(dog,0,.65,0,.75,.42,.38,dogBrown);const dogHead=new THREE.Group();dogHead.position.set(0,1.05,-.48);dog.add(dogHead);dogBall(dogHead,0,0,0,.43,.4,.4,dogBrown);dogBall(dogHead,0,-.17,-.34,.28,.2,.25,dogLight);dogBall(dogHead,0,-.12,-.53,.15,.12,.1,dogBlack);dogBall(dogHead,-.2,.12,-.32,.055,.065,.045,dogBlack);dogBall(dogHead,.2,.12,-.32,.055,.065,.045,dogBlack);const earL=dogBall(dogHead,-.34,.32,-.02,.16,.3,.12,dogDark),earR=dogBall(dogHead,.34,.32,-.02,.16,.3,.12,dogDark);earL.rotation.z=-.3;earR.rotation.z=.3;
+const dogLegs=[];for(const x of [-.45,.45])for(const z of [-.23,.25]){const leg=new THREE.Group();leg.position.set(x,.55,z);dog.add(leg);dogBall(leg,0,-.23,0,.13,.32,.13,dogBrown);dogBall(leg,0,-.42,-.035,.15,.1,.18,dogLight);dogLegs.push(leg)}
+const dogTail=new THREE.Group();dogTail.position.set(0,.85,.32);dog.add(dogTail);dogBall(dogTail,0,.18,.25,.09,.09,.35,dogBrown);dogBall(dogTail,0,.3,.48,.1,.1,.12,dogLight);dog.position.set(1,0,2);
+let dogComing=false,dogAttackMode=false,dogAttackTarget=null,dogWalkTime=0,dogBarkTimer=0;
+// Audio and speech
+let audioContext=null;function initAudio(){try{if(!audioContext){const AC=window.AudioContext||window.webkitAudioContext;if(AC)audioContext=new AC()}if(audioContext?.state==='suspended')audioContext.resume()}catch(e){}}
+function playSound(type){if(!audioContext)return;try{const c=audioContext,n=c.currentTime,o=c.createOscillator(),g=c.createGain();o.connect(g);g.connect(c.destination);o.type=type==='punch'?'sawtooth':type==='bark'?'square':'triangle';o.frequency.setValueAtTime(type==='bark'?420:type==='punch'?180:100,n);o.frequency.exponentialRampToValueAtTime(type==='bark'?260:35,n+.18);g.gain.setValueAtTime(.16,n);g.gain.exponentialRampToValueAtTime(.001,n+.2);o.start(n);o.stop(n+.21)}catch(e){}}
+function speakVietnamese(s){if(!('speechSynthesis'in window))return;try{speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(s);u.lang='vi-VN';u.pitch=1.15;speechSynthesis.speak(u)}catch(e){}}
+// Effects
+const effects=[];function makeBurst(pos){const colors=[0xffcc33,0xff5533,0x44ddff,0x66ff66,0xffffff,0xff77cc];for(let i=0;i<28;i++){const p=new THREE.Mesh(new THREE.SphereGeometry(.15,6,6),new THREE.MeshBasicMaterial({color:colors[i%colors.length]}));p.position.copy(pos);scene.add(p);effects.push({mesh:p,velocity:new THREE.Vector3((Math.random()-.5)*11,Math.random()*9+2,(Math.random()-.5)*11),life:1.1})}}
+// Pose
+function standUp(p=player){p.pose='stand';p.torso.rotation.set(0,0,0);p.torso.position.set(0,1.35,0);p.head.position.set(0,2.1,0);p.arms.forEach(a=>a.rotation.set(0,0,0));p.legs.forEach(l=>l.rotation.set(0,0,0));p.g.position.y=0}
+function sitDown(p=player){p.pose='sit';p.g.position.y=0;p.torso.rotation.set(-.12,0,0);p.torso.position.set(0,1.15,.08);p.head.position.set(0,1.85,.08);p.arms[0].rotation.x=p.arms[1].rotation.x=-.45;p.legs.forEach(l=>l.rotation.x=-1.25)}
+function lieDown(p=player){p.pose='lie';p.g.position.y=0;p.torso.rotation.set(Math.PI/2,0,0);p.torso.position.set(0,.48,0);p.head.position.set(0,.55,-.65);p.arms[0].rotation.z=-1.2;p.arms[1].rotation.z=1.2;p.legs.forEach(l=>l.rotation.x=-1.35)}
+function applyPose(p,pose){if(pose==='sit')sitDown(p);else if(pose==='lie')lieDown(p);else standUp(p)}
+document.getElementById('sit').addEventListener('pointerdown',e=>{e.preventDefault();initAudio();if(!jumping)applyPose(player,player.pose==='sit'?'stand':'sit')});
+document.getElementById('lie').addEventListener('pointerdown',e=>{e.preventDefault();initAudio();if(!jumping)applyPose(player,player.pose==='lie'?'stand':'lie')});
+// Multiplayer protocol
+let peer=null,conn=null,connected=false,isHost=false,offline=false,lastStateSend=0,lastInputSend=0,remoteState=null,remoteInput={up:false,down:false,left:false,right:false};
+const roomCode=document.getElementById('roomCode');
+function netStatus(s){statusEl.textContent=s;info.innerHTML='LÀNG QUÊ VIỆT NAM<br>'+s}
+function send(data){if(connected&&conn?.open){try{conn.send(data)}catch(e){}}}
+function stateSnapshot(){return {type:'snapshot',players:[{x:player.g.position.x,y:player.g.position.y,z:player.g.position.z,rot:player.g.rotation.y,pose:player.pose,moving:!!(keys.up||keys.down||keys.left||keys.right),jumping,broom:player.broom,action:player.action,actionTime:player.actionTime},{x:remote.g.position.x,y:remote.g.position.y,z:remote.g.position.z,rot:remote.g.rotation.y,pose:remote.pose}],dog:{x:dog.position.x,z:dog.position.z,coming:dogComing,attack:dogAttackMode},npcs:npcList.map(n=>({x:n.group.position.x,y:n.group.position.y,z:n.group.position.z,rotX:n.group.rotation.x,rotZ:n.group.rotation.z,state:n.state,visible:n.group.visible,respawn:n.respawnTimer}),)}}
+function applySnapshot(d){if(!d||d.type!=='snapshot')return;const remoteD=d.players?.[isHost?1:0];if(remoteD){remoteState=remoteD;remote.g.position.lerp(new THREE.Vector3(remoteD.x,remoteD.y,remoteD.z),.65);remote.g.rotation.y=remoteD.rot; if(remote.pose!==remoteD.pose)applyPose(remote,remoteD.pose);remote.broom=!!remoteD.broom;remoteBroom.visible=remote.broom;if(remoteD.action&&remoteD.action!==remote.action){remote.action=remoteD.action;remote.actionTime=.35}}
+ if(d.dog){dog.position.lerp(new THREE.Vector3(d.dog.x,0,d.dog.z),.5);dogComing=d.dog.coming;dogAttackMode=d.dog.attack}
+ if(Array.isArray(d.npcs))d.npcs.forEach((n,i)=>{const a=npcList[i];if(!a)return;a.group.position.set(n.x,n.y,n.z);a.group.rotation.set(n.rotX,0,n.rotZ);a.state=n.state;a.group.visible=n.visible;a.respawnTimer=n.respawn})}
+function setupConn(c,host){conn=c;isHost=host;c.on('open',()=>{connected=true;offline=false;lobby.style.display='none';remote.g.visible=true;netStatus('🟢 Đã kết nối với người chơi thứ hai!');send({type:'hello',role:host?'host':'guest'});if(host)send(stateSnapshot())});c.on('data',d=>{if(!d||typeof d!=='object')return;if(d.type==='input'&&isHost){remoteInput=d.input||remoteInput;remote.g.position.set(d.x||0,d.y||0,d.z||0);remote.g.rotation.y=d.rot||0;remote.pose=d.pose||'stand';remote.broom=!!d.broom;remoteBroom.visible=remote.broom;remote.action=d.action||'';remote.actionTime=d.actionTime||0;if(d.jump){remote.g.position.y=d.y||0}}else if(d.type==='snapshot'&&!isHost)applySnapshot(d);else if(d.type==='event'){handleRemoteEvent(d)}});c.on('close',()=>{connected=false;remote.g.visible=false;netStatus('Bạn bè đã ngắt kết nối.');});c.on('error',e=>netStatus('Lỗi kết nối: '+e.type))}
+function handleRemoteEvent(d){if(d.event==='npcHit'){const n=npcList[d.index];if(n){n.state='waiting';n.group.visible=false;n.respawnTimer=3;makeBurst(n.group.position.clone().add(new THREE.Vector3(0,1,0)))}}
+ if(d.event==='dogAttack'){dogAttackMode=true;dogComing=false;dogAttackTarget=npcList[d.index]||null}
+ if(d.event==='dogCall'){dogComing=true;dogAttackMode=false;dogAttackTarget=null}
+ if(d.event==='broom'){remote.broom=true;remoteBroom.visible=true}
+ if(d.event==='pose')applyPose(remote,d.pose)}
+document.getElementById('createRoom').onclick=()=>{if(!window.Peer){netStatus('PeerJS chưa tải được. Kiểm tra Internet.');return}netStatus('Đang tạo phòng...');peer=new Peer(undefined,{debug:1});peer.on('open',id=>{roomCode.textContent=id;netStatus('Đã tạo phòng. Gửi mã này cho bạn bè.')});peer.on('connection',c=>{if(connected){c.close();return}setupConn(c,true)});peer.on('error',e=>netStatus('Không tạo được phòng: '+e.type))};
+document.getElementById('joinRoom').onclick=()=>{const id=document.getElementById('joinCode').value.trim();if(!id){netStatus('Hãy nhập mã phòng.');return}if(!window.Peer){netStatus('PeerJS chưa tải được.');return}netStatus('Đang kết nối...');peer=new Peer(undefined,{debug:1});peer.on('open',()=>{const c=peer.connect(id,{reliable:true});setupConn(c,false)});peer.on('error',e=>netStatus('Không vào được phòng: '+e.type))};
+document.getElementById('copyCode').onclick=async()=>{if(roomCode.textContent==='Chưa tạo phòng')return;try{await navigator.clipboard.writeText(roomCode.textContent);netStatus('Đã sao chép mã phòng!')}catch(e){netStatus('Mã phòng: '+roomCode.textContent)}};
+document.getElementById('playOffline').onclick=()=>{offline=true;lobby.style.display='none';remote.g.visible=true;remote.g.position.set(2,0,4);netStatus('Đang chơi ngoại tuyến – Tuyết & Quốc');notify('Chào mừng Tuyết và Quốc đến với làng quê!')};
+// Controls
+const keys={up:false,down:false,left:false,right:false};['up','down','left','right'].forEach(id=>{const btn=document.getElementById(id);btn.addEventListener('pointerdown',e=>{e.preventDefault();e.stopPropagation();initAudio();if(player.pose!=='stand')standUp();keys[id]=true;btn.setPointerCapture(e.pointerId)});['pointerup','pointercancel','lostpointercapture'].forEach(ev=>btn.addEventListener(ev,()=>keys[id]=false))});
+const keyMap={ArrowUp:'up',w:'up',ArrowDown:'down',s:'down',ArrowLeft:'left',a:'left',ArrowRight:'right',d:'right'};window.addEventListener('keydown',e=>{const k=keyMap[e.key];if(k){keys[k]=true;if(player.pose!=='stand')standUp();e.preventDefault()}});window.addEventListener('keyup',e=>{const k=keyMap[e.key];if(k)keys[k]=false});window.addEventListener('blur',()=>Object.keys(keys).forEach(k=>keys[k]=false));
+let jumping=false,velocityY=0,punchCooldown=false,punchAnimation=0,broomAnimation=0,broomCooldown=false,cameraAngle=0,cameraHeight=5,cameraDistance=8;
+document.getElementById('jump').addEventListener('pointerdown',e=>{e.preventDefault();e.stopPropagation();initAudio();if(!jumping){if(player.pose!=='stand')standUp();jumping=true;velocityY=5.5}});
+function hitNearest(range,action){let nearest=null,dist=range;for(let i=0;i<npcList.length;i++){const n=npcList[i];if(n.state!=='alive')continue;const d=Math.hypot(player.g.position.x-n.group.position.x,player.g.position.z-n.group.position.z);if(d<dist){nearest={n,i};dist=d}}if(!nearest)return;const n=nearest.n;n.state='flying';n.flightTimer=.7;const dir=new THREE.Vector3(n.group.position.x-player.g.position.x,0,n.group.position.z-player.g.position.z);if(dir.lengthSq()<.001)dir.set(-Math.sin(cameraAngle),0,-Math.cos(cameraAngle));dir.normalize();n.velocity.set(dir.x*(action==='broom'?9:12),action==='broom'?8:11,dir.z*(action==='broom'?9:12));send({type:'event',event:'npcHit',index:nearest.i});}
+document.getElementById('punch').addEventListener('pointerdown',e=>{e.preventDefault();e.stopPropagation();initAudio();if(punchCooldown)return;punchCooldown=true;setTimeout(()=>punchCooldown=false,700);if(player.pose!=='stand')standUp();punchAnimation=.35;player.action='punch';playSound('punch');speakVietnamese('Tao đấm mày! Haha!');hitNearest(3.5,'punch')});
+document.getElementById('broom').addEventListener('pointerdown',e=>{e.preventDefault();e.stopPropagation();initAudio();if(!player.broom){player.broom=true;broom.visible=true;send({type:'event',event:'broom'});speakVietnamese('Tao lấy chổi đây!');info.innerHTML='Đã cầm chổi!';return}if(broomCooldown)return;broomCooldown=true;setTimeout(()=>broomCooldown=false,650);if(player.pose!=='stand')standUp();broomAnimation=.4;player.action='broom';playSound('punch');hitNearest(4.5,'broom');speakVietnamese('Ăn chổi nè!')});
+document.getElementById('callDog').addEventListener('pointerdown',e=>{e.preventDefault();e.stopPropagation();initAudio();dogAttackMode=false;dogAttackTarget=null;dogComing=true;dogBarkTimer=0;send({type:'event',event:'dogCall'});speakVietnamese('Nu ơi!');playSound('bark')});
+document.getElementById('dogAttack').addEventListener('pointerdown',e=>{e.preventDefault();e.stopPropagation();initAudio();let nearest=null,dist=35;for(let i=0;i<npcList.length;i++){const n=npcList[i];if(n.state!=='alive')continue;const d=Math.hypot(dog.position.x-n.group.position.x,dog.position.z-n.group.position.z);if(d<dist){nearest={n,i};dist=d}}if(!nearest){speakVietnamese('Không thấy ai ở gần!');return}dogComing=false;dogAttackMode=true;dogAttackTarget=nearest.n;dogBarkTimer=0;send({type:'event',event:'dogAttack',index:nearest.i});speakVietnamese('Nu! Đuổi theo nào!');playSound('bark')});
+document.getElementById('resetCamera').addEventListener('pointerdown',e=>{e.preventDefault();cameraAngle=0;cameraHeight=5;cameraDistance=8});
+document.getElementById('rotateScreen').addEventListener('pointerdown',async e=>{
+ e.preventDefault();e.stopPropagation();
+ try{
+  if(!document.fullscreenElement && document.documentElement.requestFullscreen) await document.documentElement.requestFullscreen();
+  if(screen.orientation && screen.orientation.lock) await screen.orientation.lock('landscape');
+  else throw new Error('Trình duyệt không hỗ trợ khóa xoay');
+ }catch(err){info.innerHTML='Hãy xoay điện thoại sang ngang để chơi';}
+});
+// Camera drag, ignore UI
+let touches=new Map(),oldDistance=0,oldMidX=0,oldMidY=0;const canvas=renderer.domElement;
+canvas.addEventListener('pointerdown',e=>{touches.set(e.pointerId,{x:e.clientX,y:e.clientY,oldX:e.clientX,oldY:e.clientY});canvas.setPointerCapture(e.pointerId)});
+canvas.addEventListener('pointermove',e=>{if(!touches.has(e.pointerId))return;const t=touches.get(e.pointerId);t.x=e.clientX;t.y=e.clientY;const a=[...touches.values()];if(a.length===1){cameraAngle-=(t.x-t.oldX)*.006;cameraHeight=THREE.MathUtils.clamp(cameraHeight+(t.y-t.oldY)*.025,2,12);t.oldX=t.x;t.oldY=t.y}else if(a.length===2){const mx=(a[0].x+a[1].x)/2,my=(a[0].y+a[1].y)/2,dist=Math.hypot(a[0].x-a[1].x,a[0].y-a[1].y);if(oldDistance>0){cameraAngle-=(mx-oldMidX)*.006;cameraHeight=THREE.MathUtils.clamp(cameraHeight+(my-oldMidY)*.025,2,12);cameraDistance=THREE.MathUtils.clamp(cameraDistance+(oldDistance-dist)*.015,4,15)}oldMidX=mx;oldMidY=my;oldDistance=dist}});
+function removeTouch(e){touches.delete(e.pointerId);oldDistance=0;touches.forEach(t=>{t.oldX=t.x;t.oldY=t.y})}canvas.addEventListener('pointerup',removeTouch);canvas.addEventListener('pointercancel',removeTouch);canvas.addEventListener('lostpointercapture',removeTouch);
+// Game loop
+const clock=new THREE.Clock();let walkTime=0;
+function animate(){requestAnimationFrame(animate);const dt=Math.min(clock.getDelta(),.05);
+ let forward=0,strafe=0;if(keys.up)forward++;if(keys.down)forward--;if(keys.left)strafe--;if(keys.right)strafe++;const moving=forward!==0||strafe!==0;
+ let dx=Math.cos(cameraAngle)*strafe-Math.sin(cameraAngle)*forward,dz=-Math.sin(cameraAngle)*strafe-Math.cos(cameraAngle)*forward;
+ if(moving){const len=Math.hypot(dx,dz);dx/=len;dz/=len;if(inCar){car.position.x+=dx*7*dt;car.position.z+=dz*7*dt;player.g.position.set(car.position.x,0,car.position.z);remote.g.position.set(car.position.x,0,car.position.z)}else{player.g.position.x+=dx*5*dt;player.g.position.z+=dz*5*dt;}player.g.rotation.y=Math.atan2(dx,-dz);walkTime+=dt*10;if(player.pose!=='stand')standUp()}else walkTime=0;
+  if(!connected&&!inCar&&!inHouse&&remote.g.visible){const followX=player.g.position.x+Math.sin(player.g.rotation.y+1.1)*1.8,followZ=player.g.position.z+Math.cos(player.g.rotation.y+1.1)*1.8;const fd=Math.hypot(followX-remote.g.position.x,followZ-remote.g.position.z);if(fd>2){remote.g.position.x+=(followX-remote.g.position.x)*Math.min(1,dt*2.5);remote.g.position.z+=(followZ-remote.g.position.z)*Math.min(1,dt*2.5);remote.g.rotation.y=Math.atan2(player.g.position.x-remote.g.position.x,remote.g.position.z-player.g.position.z)}}
+ player.g.position.x=THREE.MathUtils.clamp(player.g.position.x,-140,140);player.g.position.z=THREE.MathUtils.clamp(player.g.position.z,-140,140);
+ const swing=moving?Math.sin(walkTime)*.65:0;if(player.pose==='stand'){player.arms[0].rotation.x=swing;if(!player.broom)player.arms[1].rotation.x=-swing;player.legs[0].rotation.x=-swing;player.legs[1].rotation.x=swing}
+ if(broomAnimation>0){broomAnimation-=dt;player.arms[1].rotation.x=-2.5;player.arms[1].rotation.z=-.6}else if(player.broom&&player.pose==='stand'&&punchAnimation<=0){player.arms[1].rotation.x=-.35;player.arms[1].rotation.z=-.15}
+ if(punchAnimation>0){punchAnimation-=dt;if(!player.broom){player.arms[1].rotation.x=-2.1;player.arms[1].rotation.z=-.35}}else if(player.pose==='stand'&&!player.broom)player.arms[1].rotation.z=0;
+ if(jumping){player.g.position.y+=velocityY*dt;velocityY-=14*dt;if(player.g.position.y<=0){player.g.position.y=0;jumping=false;velocityY=0}}
+ // Nu pathing
+ if(dogComing||dogAttackMode){const tx=dogAttackMode&&dogAttackTarget?dogAttackTarget.group.position.x:player.g.position.x+Math.sin(player.g.rotation.y)*1.5,tz=dogAttackMode&&dogAttackTarget?dogAttackTarget.group.position.z:player.g.position.z+Math.cos(player.g.rotation.y)*1.5,ddx=tx-dog.position.x,ddz=tz-dog.position.z,dist=Math.hypot(ddx,ddz);
+  if(dist>.8){const speed=dogAttackMode?8:7;dog.position.x+=ddx/dist*speed*dt;dog.position.z+=ddz/dist*speed*dt;dog.rotation.y=Math.atan2(ddx,ddz);dogWalkTime+=dt*13;dogLegs[0].rotation.x=Math.sin(dogWalkTime)*.7;dogLegs[1].rotation.x=-Math.sin(dogWalkTime)*.7;dogLegs[2].rotation.x=-Math.sin(dogWalkTime)*.7;dogLegs[3].rotation.x=Math.sin(dogWalkTime)*.7;dogTail.rotation.x=Math.sin(dogWalkTime*2)*.5}
+  else{if(dogAttackMode&&dogAttackTarget&&dogAttackTarget.state==='alive'){const npc=dogAttackTarget,pos=npc.group.position.clone();pos.y+=1;makeBurst(pos);playSound('bark');npc.group.visible=false;npc.state='waiting';npc.respawnTimer=3;send({type:'event',event:'npcHit',index:npcList.indexOf(npc)});speakVietnamese('Gâu gâu!')}dogComing=false;dogAttackMode=false;dogAttackTarget=null;dogLegs.forEach(l=>l.rotation.x=0);dogHead.rotation.x=0}
+  dogBarkTimer-=dt;if(dogBarkTimer<=0){playSound('bark');dogBarkTimer=1.2}
+ }else{dogTail.rotation.x=Math.sin(clock.elapsedTime*4)*.25;dogHead.rotation.x=Math.sin(clock.elapsedTime*2)*.025}
+ // NPC flight and respawn
+ for(let i=0;i<npcList.length;i++){const n=npcList[i];if(n.state==='flying'){n.flightTimer-=dt;n.group.position.addScaledVector(n.velocity,dt);n.velocity.y-=12*dt;n.group.rotation.x+=dt*7;n.group.rotation.z+=dt*5;if(n.flightTimer<=0){const pos=n.group.position.clone();pos.y+=1;makeBurst(pos);playSound('boom');n.group.visible=false;n.state='waiting';n.respawnTimer=3}}
+ else if(n.state==='waiting'){n.respawnTimer-=dt;if(n.respawnTimer<=0){n.group.position.set(n.x,0,n.z);n.group.rotation.set(0,0,0);n.group.visible=true;n.state='alive'}}}
+ for(let i=effects.length-1;i>=0;i--){const p=effects[i];p.mesh.position.addScaledVector(p.velocity,dt);p.velocity.y-=12*dt;p.life-=dt;p.mesh.scale.setScalar(Math.max(0,p.life));if(p.life<=0){scene.remove(p.mesh);p.mesh.geometry.dispose();p.mesh.material.dispose();effects.splice(i,1)}}
+ // Remote avatar animation from latest data
+ if(remote.g.visible){const movingRemote=!!remoteState?.moving,s=Math.sin(clock.elapsedTime*10)*.55;if(remote.pose==='stand'){remote.arms[0].rotation.x=movingRemote?s:0;if(!remote.broom)remote.arms[1].rotation.x=movingRemote?-s:0;remote.legs[0].rotation.x=movingRemote?-s:0;remote.legs[1].rotation.x=movingRemote?s:0}if(remote.actionTime>0){remote.actionTime-=dt;remote.arms[1].rotation.x=-2}}
+ // Network input from guest -> host; host broadcasts full world snapshot
+ if(connected&&conn?.open){if(!isHost&&clock.elapsedTime-lastInputSend>.05){lastInputSend=clock.elapsedTime;send({type:'input',input:keys,x:player.g.position.x,y:player.g.position.y,z:player.g.position.z,rot:player.g.rotation.y,pose:player.pose,broom:player.broom,action:player.action,actionTime:player.actionTime,jump:jumping})}
+ if(isHost&&clock.elapsedTime-lastStateSend>.08){lastStateSend=clock.elapsedTime;send(stateSnapshot())}
+ }
+ const target=new THREE.Vector3(player.g.position.x+Math.sin(cameraAngle)*cameraDistance,player.g.position.y+cameraHeight,player.g.position.z+Math.cos(cameraAngle)*cameraDistance);camera.position.lerp(target,.12);camera.lookAt(player.g.position.x,player.g.position.y+1.3,player.g.position.z);
+ const alive=npcList.filter(n=>n.state==='alive').length;let status=moving?'Đang di chuyển':jumping?'Đang nhảy':player.pose==='sit'?'Đang ngồi':player.pose==='lie'?'Đang nằm':'Đang đứng yên';
+ info.innerHTML='TUYẾT 💙 QUỐC<br>'+status+'<br>💗 Tuyết: '+playerHealth+'/100 | Quốc: '+remoteHealth+'/100<br>Người chơi: '+(connected?'2/2':'2 nhân vật')+' | NPC: '+alive+'<br>🐕 Nu: '+(dogAttackMode?'Đang đuổi NPC':dogComing?'Đang chạy đến':'Ở gần bạn')+'<br>🧹 Chổi: '+(player.broom?'Đã cầm':'Chưa cầm');
+ renderer.render(scene,camera)}
+camera.position.set(0,5,8);camera.lookAt(0,1,0);animate();
+window.addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)});
+</script>
+</body>
+</html>
